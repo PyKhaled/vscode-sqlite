@@ -3,7 +3,7 @@ var exportJson;
 var exportCsv;
 
 (function() {
-
+    /*
     let resultTableList = Array.from(document.getElementsByClassName("result-table"));
     resultTableList.forEach(elem => {
         paginator({
@@ -12,6 +12,7 @@ var exportCsv;
             rows_per_page: recordsPerPage
         });
     });
+    */
     
     const vscode = acquireVsCodeApi();
     window.addEventListener('message', function(event) {

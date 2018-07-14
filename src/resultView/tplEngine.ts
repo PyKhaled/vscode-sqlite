@@ -77,7 +77,7 @@ export class TemplateEngine {
         return path;
     }
 
-    _tpl_html(str: string, rootPath: string, ctx: TplContext) {
+    _tpl_tpl(str: string, rootPath: string, ctx: TplContext) {
         let path = join(rootPath, str);
         return this.process(path, ctx);
     }
@@ -129,8 +129,8 @@ class TplStack {
             return self._engine._tpl_resource(str, '${this.rootPath}');
         }`);
         this.pushJs(
-        `function html(str, ctx) {
-            return self._engine.process('${this.rootPath}/'+str, ctx);
+        `function tpl(str, ctx) {
+            return self._engine._tpl_tpl(str, '${this.rootPath}', ctx);
         }`);
 
         this.pushJs('let _s = [];');

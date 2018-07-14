@@ -1,5 +1,5 @@
 <div id="result_table_<%= this.id %>" class="result-table">
-  <% if (this.rows.length !== 0) { %>
+  <% if (this.rows !== []) { %>
     <table id="table_<%= this.id %>" class="enumerated">
       <thead>
         <tr>
@@ -10,14 +10,7 @@
         </tr>
       </thead>
       <tbody>
-        <% for (row in this.rows) { %>
-          <tr>
-            <td><%= parseInt(row)+1 %></td>
-            <% for (r of this.rows[row]) { %>
-                <td><%= r %></td>
-            <% } %>
-          </tr>
-        <% } %>
+        
       </tbody>
     </table>
   <% } else { %>
