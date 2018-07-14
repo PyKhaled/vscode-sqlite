@@ -12,7 +12,7 @@ suite("SQLite3.parseOutput Tests", function () {
         let str = `${stmt}\n"${row11}" "${row12}"\n"${row21}" "${row22}"`;
         
         let expected = [{stmt: stmt, rows: [[row11, row12],[row21, row22]]}];
-        let actual = sqlite3.SQLite.parseOutput(str);
+        let actual = sqlite3.parseOutput(str);
         
         assert.deepStrictEqual(actual, expected);
     });
@@ -25,7 +25,7 @@ suite("SQLite3.parseOutput Tests", function () {
         let str = `${stmt1}\n${stmt2}\n"${row}"\n${stmt3}`;
         
         let expected = [{stmt: stmt1, rows: []}, {stmt: stmt2, rows:[[row]]}, {stmt: stmt3, rows: []}];
-        let actual = sqlite3.SQLite.parseOutput(str);
+        let actual = sqlite3.parseOutput(str);
         
         assert.deepStrictEqual(actual, expected);
     });

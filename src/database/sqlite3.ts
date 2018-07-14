@@ -1,16 +1,11 @@
 import * as child_process from 'child_process';
-import * as csv_parse from 'csv-parse/lib/sync';
 import { logger } from '../logging/logger';
-import { splitNotInString, replaceEscapedOctetsWithChar } from '../utils/utils';
-import { platform } from 'os';
-
-/* regex */
-const reNewLine = /(?!\B\"[^\"]*)\n(?![^\"]*\"\B)/g; // match new lines not in quotes
+import { replaceEscapedOctetsWithChar } from '../utils/utils';
 
 export class SQLite {
 
     static query(cmdSqlite: string, dbPath: string, query: string, outputBuffer: number, callback: (rows: Object[], err?:Error) => void) {
-        query = this.sanitizeQuery(query);
+        query = this.sanitizeQueryForExec(query);
         
         const args = [
             `"${dbPath}"`, `"${query}"`,
@@ -22,18 +17,22 @@ export class SQLite {
             
         const cmd = `${cmdSqlite} ${args.join(' ')}`;
         logger.debug(`[QUERY CMD] ${cmd}`);
+        let queryStart = Date.now();
 
         child_process.exec(cmd, {maxBuffer: outputBuffer}, (err: Error, stdout: string, stderr: string) => {
+            let queryEnd = Date.now();
             if (err) {
-                callback([], this.parseError(err.message));
+                callback([], parseError(err.message));
             } else {
-                callback(this.parseOutput(stdout), undefined);
+                callback(parseOutput(stdout), undefined);
             }
+            logger.debug("Time query: "+(queryEnd-queryStart));
+            logger.debug("Time query+parse: "+(Date.now()-queryStart));
         });
     }
 
     static querySync(cmdSqlite: string, dbPath: string, query: string, outputBuffer: number): Object[] | Error {
-        query = this.sanitizeQuery(query);
+        query = this.sanitizeQueryForExec(query);
         
         const args = [
             `"${dbPath}"`, `"${query}"`,
@@ -48,80 +47,133 @@ export class SQLite {
 
         try {
             let stdout = child_process.execSync(cmd, {maxBuffer: outputBuffer});
-            return this.parseOutput(stdout.toString());
+            return parseOutput(stdout.toString());
         } catch(err) {
-            return this.parseError(err.message);
+            return parseError(err.message);
         }
     }
 
     /**
      * replace " with \"
      */
-    private static sanitizeQuery(query: string) {
+    private static sanitizeQueryForExec(query: string) {
         query = query.replace(/\"/g, '\\"');
         return query;
     }
+}
 
-    public static parseError(message: string): Error {
-        let lines = message.split(reNewLine);
-        for (var i=0; i<lines.length; i++) {
-            if (lines[i].startsWith('Error')) {
-                return new Error(lines[i]);
-            }
+
+export function parseError(err: string) {
+    let lines = err.split(/(?!\B\"[^\"]*)\n(?![^\"]*\"\B)/g);
+    for (var i=0; i<lines.length; i++) {
+        if (lines[i].startsWith('Error')) {
+            return new Error(lines[i]);
         }
-        // overwrite "max output buffer exceeded" error message
-        if (message.startsWith("stdout")) {
-            message += ": increase setting sqlite.outputBuffer value to display this table.";
-        }
-        return Error(message);
     }
+    // overwrite "max output buffer exceeded" error message
+    if (err.startsWith("stdout")) {
+        err += ": increase setting sqlite.outputBuffer value to display this table.";
+    }
+    return Error(err);
+}
 
-    // TODO: refactor this part and maybe move it in its own module
-    public static parseOutput(output: string) {
-        let data: Object[] = [];
+export function parseOutput(stdout: string) {
+    let data: Object[] = [];
+    let stmt: string = "";
+    let rows: string[][] = [];
+    let isInStmt: boolean = true;
+    let isInString: boolean = false;
+    let stringChar: string = "";
 
-        let splitChar = platform() === 'win32'? '\r\n' : '\n';
-        let lines = splitNotInString(splitChar, output);
-        lines = lines.filter(line => line.trim() !== '');
-        
-        let stmt = '';
-        let rowsStr: string | null = null;
-        for (var index = 0; index < lines.length; index++) {
-            let line = lines[index];
-            let prev = index > 0? lines[index-1] : null;
+    for(let i=0; i<stdout.length; i++) {
+        let char = stdout[i];
+        let prevChar = (n?: number) => {
+            n = Math.abs(n!==undefined? n : 1);
+            return i-n >= 0? stdout[i-n] : "";
+        };
+        let nextChar = (n?: number) => {
+            n = Math.abs(n!==undefined? n : 1);
+            return i+n < stdout.length? stdout[i+n] : "";
+        };
 
-            if (line.startsWith('"')) {
-                if (rowsStr) {
-                    rowsStr = rowsStr+'\n'+line;
-                } else {
-                    rowsStr = line;
-                }
-                // if its the last line push stmt and rows
-                if (index === lines.length-1) {
-                    let csv_parse_options = {delimiter: ' ', quote: '"', escape: '\\'};
-                    let rows = rowsStr? csv_parse(rowsStr, csv_parse_options) : [];
-                    rows = rows.map((row: string[]) => row.map(field => replaceEscapedOctetsWithChar(field)));
+        if (isInStmt) {
+            // start of string
+            if (!isInString && (char === `"` || char === `'`)) {
+                stmt += char;
+                isInString = true;
+                stringChar = char;
+                continue;
+            }
+            // end of string
+            if (isInString && char === stringChar) {
+                stmt += char;
+                isInString = false;
+                stringChar = "";
+                continue;
+            }
+            // end of stmt
+            if (!isInString && char === `;`) {
+                stmt += char;
+                isInStmt = false;
+                if (nextChar() === "") {
+                    // end of output
                     data.push({stmt: stmt, rows: rows});
                 }
-            } else {
-                // push previous (if there is) stmt and rows to data
-                if (prev) {
-                    let csv_parse_options = {delimiter: ' ', quote: '"', escape: '\\'};
-                    let rows = rowsStr? csv_parse(rowsStr, csv_parse_options) : [];
-                    rows = rows.map((row: string[]) => row.map(field => replaceEscapedOctetsWithChar(field)));
-                    data.push({stmt: stmt, rows: rows});
-                    rowsStr = null;
-                }
-                stmt = line;
-                // if its the last line push stmt without rows
-                if (index === lines.length-1) {
-                    data.push({stmt: stmt, rows: []});
-                }
+                continue;
             }
 
-        }
+            stmt += char;
+        } else {
+            // start of new statement (case: no result)
+            if (!isInString && char !== `"` && prevChar() === `\n`) {
+                data.push({stmt: stmt, rows: rows});
+                stmt = char;
+                rows = [];
+                isInStmt = true;
+                continue;
+            }
+            // first field of row
+            if (!isInString && char === `"` && prevChar() === `\n`) {
+                isInString = true;
+                rows.push([]);
+                rows[rows.length-1].push("");
+                continue;
+            }
+            // start of field
+            if (!isInString && char === `"` && prevChar() === ` `) {
+                isInString = true;
+                rows[rows.length-1].push("");
+                continue;
+            }
+            // end of field
+            if (isInString && char === `"` && prevChar() !== `\\`) {
+                isInString = false;
+                
+                let row = rows[rows.length-1];
+                row[row.length-1] = replaceEscapedOctetsWithChar(row[row.length-1]);
 
-        return data;
+                if (nextChar() === "") {
+                    // end of output
+                    data.push({stmt: stmt, rows: rows});
+                }
+                continue;
+            }
+            // inside field
+            if (isInString) {
+                let row = rows[rows.length-1];
+                row[row.length-1] += char;
+                continue;
+            }
+            // end of row and end of query result
+            if (!isInString && char === `\n` && nextChar() !== `"`) {
+                data.push({stmt: stmt, rows: rows});
+                stmt = "";
+                rows = [];
+                isInStmt = true;
+                continue;
+            }
+        }
     }
 
+    return data;
 }
