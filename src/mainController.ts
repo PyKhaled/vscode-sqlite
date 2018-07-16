@@ -93,7 +93,7 @@ export class MainController implements Disposable {
 
         return new Promise( (resolve, reject) => {
             this.configuration = new Configuration(this.context.extensionPath);
-            this.queryRunner = new QueryRunner(this.configuration.sqlite3, this.configuration.outputBuffer);
+            this.queryRunner = new QueryRunner(this.configuration.sqlite3);
             this.explorer = new SQLiteExplorer(this.queryRunner);
             this.documentDatabase = new DocumentDatabase();
             this.documentDatabaseStatusBar = new DocumentDatabaseStatusBar(this.documentDatabase);
@@ -167,11 +167,13 @@ export class MainController implements Disposable {
     }
 
     private onRunQuery(dbPath: string, query: string) {
+        this.resultView.showLoading();
         this.queryRunner.runQuery(dbPath, query).then(
             resultSet => { 
                 commands.executeCommand(Commands.showQueryResult, resultSet); 
             },
             err => {
+                this.resultView.hide();
                 logger.error(err);
                 window.showErrorMessage(err);
             }

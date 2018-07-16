@@ -29,6 +29,19 @@ export class ResultView implements Disposable {
         }
     }
 
+    showLoading() {
+        let tplPath = join(this.resourcesPath, 'views', 'loader', 'loader.html.tpl');
+        try {
+            this.webview.show(tplPath, {});
+        } catch(err) {
+            console.log(err);
+        }
+    }
+
+    hide() {
+        this.webview.hide();
+    }
+
     private exportJson(data: Object) {
         let result_id = data.hasOwnProperty('result_id')? Number.parseInt((<any>data)['result_id']) : -1;
         let json: string = '{}';

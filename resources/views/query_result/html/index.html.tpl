@@ -20,7 +20,7 @@
         </div>
     </body>
 
-    <%= js("../js/paginator2.js") %>
+    <%= js("../js/paginator.js") %>
     <%= js("../js/index.js") %>
 
     <script>

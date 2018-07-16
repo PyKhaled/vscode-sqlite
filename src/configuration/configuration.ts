@@ -7,7 +7,7 @@ export class Setting<T> {
     constructor() {
     }
     get(): T { return this.value; }
-    set(value: T) { this.value = value }
+    set(value: T) { this.value = value; }
 }
 
 export class Configuration implements Disposable {

@@ -31,9 +31,22 @@ export class Webview extends EventEmitter {
         }
     }
 
+    hide() {
+        if (this.panel) {
+            this.panel.dispose();
+        }
+    }
+
     send(command: string, text: string) {
         if (this.panel) {
             this.panel.webview.postMessage({command: command, text: text});
+        }
+    }
+
+    dispose() {
+        this.panel = undefined;
+        if (this.disposable) {
+            this.disposable.dispose();
         }
     }
 
@@ -57,12 +70,5 @@ export class Webview extends EventEmitter {
         }));
 
         this.disposable = Disposable.from(...subscriptions);
-    }
-
-    dispose() {
-        this.panel = undefined;
-        if (this.disposable) {
-            this.disposable.dispose();
-        }
     }
 }

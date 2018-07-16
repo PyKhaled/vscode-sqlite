@@ -14,7 +14,7 @@ Removed
 
 Fixed
 1. Fixed a bug that prevented the export button from working correctely.
-1. Fixed a bug that prevented the correct execution on Windows of queries composed of multiple statements.
+1. Fixed a bug that prevented the correct execution on Windows of queries with multiple statements.
 
 ## 0.2.1 (11 Jul 2018)
 Fixed
