@@ -12,11 +12,8 @@ export class DatabaseInfo {
     /**
      * Load tables and columns info for this database.
      */
-    load(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.tables().forEach(tbl => tbl.columns());
-            resolve();
-        });
+    load() {
+        this.tables().forEach(tbl => tbl.columns());
     }
 
     /**
@@ -29,9 +26,9 @@ export class DatabaseInfo {
     /**
      * Unload and then load tables and columns info for this database.
      */
-    reload(): Promise<void> {
+    reload() {
         this.unload();
-        return this.load();
+        this.load();
     }
 
     /**

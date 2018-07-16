@@ -97,7 +97,7 @@ export function parseOutput(stdout: string) {
         };
 
         if (isInStmt) {
-            // start of string
+            // start of string (we don't want semicolons in a string)
             if (!isInString && (char === `"` || char === `'`)) {
                 stmt += char;
                 isInString = true;
@@ -165,6 +165,7 @@ export function parseOutput(stdout: string) {
                 continue;
             }
             // end of row and end of query result
+            /*
             if (!isInString && char === `\n` && nextChar() !== `"`) {
                 data.push({stmt: stmt, rows: rows});
                 stmt = "";
@@ -172,6 +173,7 @@ export function parseOutput(stdout: string) {
                 isInStmt = true;
                 continue;
             }
+            */
         }
     }
 
